@@ -26,6 +26,29 @@ class Firefly():
         self.entry1.grid(row = 0, column = 1, padx = 5, pady = 5)
         self.entry1.bind("<Return>", self.updateFile)
 
+        # HISTORY BUTTON MAX IS HERE SINCE WE NEED IT FOR THE INSTRUCTIONS TOP LEVEL
+        self.historyButtonMax = 10 # Limits the total number of history buttons
+
+        instructTop = tk.Toplevel()
+        instructTop.title("Project FireFly Instructions")
+        instructions = tk.Label(instructTop, text=
+        """Welcome to Project Firefly! My name is Timothy, and I'm here to guide you through how to use this application (feel free to close this window if you've read this) \n 
+        1. First, input the pathway to the csv file you want to use. \n
+        2. After the application has found your file, it will open to a new window. To modify data, click on one of the header buttons in the window titled 'Select Header'. \n
+        You will be modifying data in the csv column with that header. Next, choose which operation to use (i.e. equal to, greater than). \n
+        Lastly, type in what you want to compare. If the comparison is != or =, you can input multiple items with a comma inbetween \n
+        \t(ex. State = California, Minnesota will eliminate all rows of data whose state isn't California OR Minnesota). \n
+        3. After you have data in all three fields (column, type of comparison, what to compare), click the button in the center. \n
+        IMPORTANT: ANY DATA THAT DOESN'T FIT THE GIVEN PARAMETERS WILL BE ELIMINTATED. So, if you want to get rid of all states NOT EQUAL to California \n
+        input 'States' for column, '=' for type of comparison, 'California' for what to compare, and it will retain all rows of data whose state is = to California. \n
+        4. After modifying data, you can display it using one of the buttons under the label Display Data Types. \n
+        5. If you want to undo a comparison, click on one of the history buttons under the window titled 'Last """ + str(self.historyButtonMax) + """ Operations'. Whichever button you click will add in all \n
+        the data that was removed from that operation back into the main window. \n
+        6. If you have any questions, suggestions, comments, problems, ideas for additional displayed data, or just want to talk about python and how this application was \n
+        built from scratch, feel free to text or call me at 650-447-4476.""",
+        font="Futura 12", relief = tk.RAISED, bd=2, )
+        instructions.grid(row=0, column=0, padx = 5, pady = 5)
+
     def go(self):
         self.rootWin.mainloop()
 
@@ -105,7 +128,8 @@ class Firefly():
                         """1. Click headers above in the order you want the columns \n
                         2. Enter PDF file name (or pathway) you want below on the left \n 
                         3. Enter number of entries per pdf on the right (default is size of data set) \n
-                        4. Then CLICK HERE to create""",
+                        4. Then CLICK HERE to create \n
+                        WARNING: DO NOT INCLUDE .pdf IN FILENAME \n""",
                         "Print Format",
                         lambda A, B, C, D, E, F: createPDF(A, B, C, D, E, F))) # Here is where it distinguishes between which method is used to display data
         self.printButton.grid(row = 4, column = 0, padx = 5, pady = 5)
@@ -118,8 +142,9 @@ class Firefly():
                         2. Enter map file name (or pathway) you want below on the left \n 
                         3. Enter number of entries per map on the right (default is size of data set) \n
                         4. Then CLICK HERE to create \n
-                        5. Move mouse to BOTTON RIGHT corner (so it's not in the screenshot) \n""",
-                        "Print Format",
+                        5. Move mouse to BOTTON RIGHT corner (so it's not in the screenshot) \n
+                        WARNING: DO NOT INCLUDE .png IN FILENAME \n""",
+                        "Map Format",
                         lambda A, B, C, D, E, F: createMap(A, B, C, D, E, F)))
         self.mapButton.grid(row = 5, column = 0, padx = 5, pady = 5)
         self.buttonList.append(self.mapButton)
@@ -132,10 +157,9 @@ class Firefly():
 
         # History toplevel that saves the last 10 changes to the file you made (starts empty)
         self.history = tk.Toplevel()
-        self.history.title("Last 10 Operations")
-        self.history.protocol("WM_DELETE_WINDOW", self.nothing)
         self.historyButtonList = [] # Tracker for all buttons added to history widget
-        self.historyButtonMax = 10 # Limits the total number of history buttons
+        self.history.title("Last " + str(self.historyButtonMax) + " Operations")
+        self.history.protocol("WM_DELETE_WINDOW", self.nothing)
         self.historyInstructions = tk.Label(self.history, text = "Click on any button below \n to add data back in", # Label with instructions
                           font = "Futura 16", relief = tk.RAISED,
                           bd = 2, bg="white")
@@ -338,6 +362,7 @@ class Firefly():
         addToButtonList (boolean): if true, adds to overall button list. The list is used to disable all buttons on the screen
         """
         toplevel = tk.Toplevel()
+        toplevel.minsize(200, 100)
         toplevel.title(header)
         toplevel.protocol("WM_DELETE_WINDOW", self.nothing)
         tracker = 0
@@ -420,7 +445,3 @@ rgb.go()
 
 # Test file
 # C:\Users\bblah\OneDrive\Desktop\1.csv
-
-# TODO: 
-# include instructions on the opening widget
-# Figure out how to py2app the whole thing

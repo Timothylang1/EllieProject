@@ -89,13 +89,13 @@ def map(addresses, filePathWay, driver):
         pixelY = round((y - offsetY) * ratio)
         if z >= 17: # When z is greater than or equal to 17, we can start to see buildings, so it's safe to use the fillin
             # If drawing the box would be bigger (i.e. change more pixels), then we draw the box instead (16 x 16)
-            if fillIn(pixelX, pixelY, pixelMap, width, height, fillInColor) < 256: # If something stopped fillIn (like name covering up building, or the building is too small), just revert back to the box shape
+            if fillIn(pixelX, pixelY, pixelMap, width, height, fillInColor) < 150: # If something stopped fillIn (like name covering up building, or the building is too small), just revert back to the box shape
                 drawSquare(pixelX, pixelY, pixelMap, width, height, fillInColor)
         else: # In every other case, we just put a 5x5 pixel box of this color where the place is
             drawSquare(pixelX, pixelY, pixelMap, width, height, fillInColor)
 
     # Save modified png image to new filePathWay
-    png.save(filePathWay)
+    png.save(filePathWay + ".png")
 
 
 def drawSquare(centerX, centerY, png, width, height, endColor):
@@ -108,7 +108,10 @@ def drawSquare(centerX, centerY, png, width, height, endColor):
     centerY = min(centerY, height - 8) # Lower bound
     for i in range(-8, 8):
         for j in range(-8, 8):
-            png[centerX + i, centerY + j] = endColor
+            if (i == -8 or i == 7 or j == -8 or j == 7): # Creates black outline
+                png[centerX + i, centerY + j] = (0, 0, 0, 255)
+            else:
+                png[centerX + i, centerY + j] = endColor
 
 
 def fillIn(centerX, centerY, png, width, height, endColor):
@@ -127,21 +130,25 @@ def fillIn(centerX, centerY, png, width, height, endColor):
                 png[x + 1, y] = endColor
                 coorlist.append((x + 1, y))
                 totalPixelsChanged += 1
+            elif png[x + 1, y] != endColor: png[x + 1, y] = (0, 0, 0, 255)
         if x - 1 >= 0:
             if png[x - 1, y] == startingColor:
                 png[x - 1, y] = endColor
                 coorlist.append((x - 1, y))
                 totalPixelsChanged += 1
+            elif png[x - 1, y] != endColor: png[x - 1, y] = (0, 0, 0, 255)
         if y + 1 < height:
             if png[x, y + 1] == startingColor:
                 png[x, y + 1] = endColor
                 coorlist.append((x, y + 1))
                 totalPixelsChanged += 1
+            elif png[x, y + 1] != endColor: png[x, y + 1] = (0, 0, 0, 255)
         if y - 1 >= 0:
             if png[x, y - 1] == startingColor:
                 png[x, y - 1] = endColor
                 coorlist.append((x, y - 1))
                 totalPixelsChanged += 1
+            elif png[x, y - 1] != endColor: png[x, y - 1] = (0, 0, 0, 255)
     return totalPixelsChanged
 
     
@@ -318,15 +325,15 @@ def removeIcon(iconPath, findx, nameOfAttribute, value, driver):
 
 
 # driver = setUpDriver()
-# Sample calls
-# map(["859 Barron Ave, Palo Alto", "1095 McGregor Way, Palo Alto", "980 Matadero Ave, Palo Alto", "4029 Arbol Dr, Palo Alto"], "4_places_test.png", driver)
+# # Sample calls
+# map(["859 Barron Ave, Palo Alto", "1095 McGregor Way, Palo Alto", "980 Matadero Ave, Palo Alto", "4029 Arbol Dr, Palo Alto"], "4_places_test", driver)
 
-# map(["859 Barron Ave, Palo Alto"], "1_place_test.png", driver)
+# # map(["859 Barron Ave, Palo Alto"], "1_place_test", driver)
 
-# map(["64 Action St, Daly City", "58 Action St, Daly City"], "2_really_close_test.png", driver)
+# # map(["64 Action St, Daly City", "58 Action St, Daly City"], "2_really_close_test", driver)
 
-# map(["64 Action St, Daly City", "58 Action St, Daly City", "6063 Mission St, Daly City"], "place_covered_by_text_test.png", driver)
+# # map(["64 Action St, Daly City", "58 Action St, Daly City", "6063 Mission St, Daly City"], "place_covered_by_text_test", driver)
 
-# ALWAYS QUIT DRIVER AT THE END TO CLOSE IT
+# # ALWAYS QUIT DRIVER AT THE END TO CLOSE IT
 # driver.quit()
 
