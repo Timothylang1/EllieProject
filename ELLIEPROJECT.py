@@ -413,7 +413,6 @@ def makeMap(subsetOfdata, filename, orderedColumnNames, driver):
     loadMap.map(listOfAddresses, filename, driver)
         
 
-
 # Start project
 rgb = Firefly()
 rgb.go()
@@ -422,8 +421,6 @@ rgb.go()
 # Test file
 # C:\Users\bblah\OneDrive\Desktop\1.csv
 
-# TODO: create function that creates toplevel widget (all going to be relatively the same)
-# Condense some functions together to avoid repetition and to keep code concise
-# implement the loadMap into a toplevel widget
+# TODO: 
 # include instructions on the opening widget
 # Figure out how to py2app the whole thing
