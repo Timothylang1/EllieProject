@@ -4,7 +4,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
-import math
+from math import sin, atan, log2, exp, log, pi
 import tkinter
 
 import urllib.request
@@ -14,13 +14,26 @@ from PIL import Image
 
 from time import sleep
 
-def map(addresses, filePathWay, fillInColor, driver):
-    """Gets a pdf map given a list of address with city, CRASHES IF NO ADDRESSES IS GIVEN
+def setUpDriver():
+    """Sets up chromedriver that will manage all of the mapping with google. You can use the driver multiple times for different maps
+    but once done, you have to call driver.quit() to close the application."""
+    s=Service(ChromeDriverManager().install())
+    chrome_options = Options()
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])     # Gets rid of google's automated software button
+    driver = webdriver.Chrome(service=s, options=chrome_options)
+    return driver
+
+
+def map(addresses, filePathWay, driver):
+    """Gets a pdf map given a list of address with city
     addresses: list of addresses
     filePathWay: the pathway for the file to be saved into
     fillInColor: what color it will create the icon or fill in the buildings"""
     # ------------------------------------- CHANGE SO THAT IT DOESN'T CRASH IF NO ADDRESS IS GIVEN
-    addressCoor = getCoordinates(addresses) # Gets dictionary of address (key) to coor [x, y] STORED IN A LIST
+    addressCoor = getCoordinates(addresses) # Gets dictionary of address (key) to coor [x, y] STORED IN A DICTIONARY
+
+    if len(addressCoor) == 0: # If it couldn't find any addresses or no addresses were given, stops the rest of the program
+        return
 
     # Finds the minX, maxX, minY, maxY for plotting on the map so that the map scales enough to fit all the addresses in the list
     # Initial values are all set on the first entry in the map
@@ -63,6 +76,9 @@ def map(addresses, filePathWay, fillInColor, driver):
 
     # Calculate scale factor between google's map size pixel and pdf size pixel
     ratio = width / actualWidth
+
+    # Fill in color for icons, chose by the little firefly
+    fillInColor = (197, 121, 224, 255)
 
     # Modifies map by adding in icons at locations on the png
     # Calculating the location
@@ -141,7 +157,7 @@ def calculateZ(pixelWidthOfComputer, pixelWidthRequired):
     is an int since google maps can only become an int"""
     if (pixelWidthRequired == 0): # If there is no pixelWidthRequired, that means that there is only one item in the list, so we zoom in to default google maps zoom
         return 17
-    return (int) (math.log2(pixelWidthOfComputer/pixelWidthRequired) + 3)
+    return (int) (log2(pixelWidthOfComputer/pixelWidthRequired) + 3)
 
 
 def getMinMax(addressCoor):
@@ -207,27 +223,27 @@ def convertGeoToPixel(latitude, longitude,
                   mapLngRight, # in degrees. the longitude of the right side of the map
                   mapLatBottom): # in degrees.  the latitude of the bottom of the map
 
-    mapLatBottomRad = mapLatBottom * math.pi / 180
-    latitudeRad = latitude * math.pi / 180
+    mapLatBottomRad = mapLatBottom * pi / 180
+    latitudeRad = latitude * pi / 180
     mapLngDelta = (mapLngRight - mapLngLeft)
 
-    worldMapWidth = ((mapWidth / mapLngDelta) * 360) / (2 * math.pi)
-    mapOffsetY = (worldMapWidth / 2 * math.log((1 + math.sin(mapLatBottomRad)) / (1 - math.sin(mapLatBottomRad))))
+    worldMapWidth = ((mapWidth / mapLngDelta) * 360) / (2 * pi)
+    mapOffsetY = (worldMapWidth / 2 * log((1 + sin(mapLatBottomRad)) / (1 - sin(mapLatBottomRad))))
 
     x = (longitude - mapLngLeft) * (mapWidth / mapLngDelta)
-    y = mapHeight - ((worldMapWidth / 2 * math.log((1 + math.sin(latitudeRad)) / (1 - math.sin(latitudeRad)))) - mapOffsetY)
+    y = mapHeight - ((worldMapWidth / 2 * log((1 + sin(latitudeRad)) / (1 - sin(latitudeRad)))) - mapOffsetY)
 
     return [x, y]
 
 def convertPixelToGeo(x, y, mapWidth, mapHeight, mapLngLeft, mapLngRight, mapLatBottom):
-    mapLatBottomRad = mapLatBottom * math.pi / 180
+    mapLatBottomRad = mapLatBottom * pi / 180
     mapLngDelta = (mapLngRight - mapLngLeft)
-    worldMapRadius = mapWidth / mapLngDelta * 360/(2 * math.pi);    
-    mapOffsetY = (worldMapRadius / 2 * math.log( (1 + math.sin(mapLatBottomRad) ) / (1 - math.sin(mapLatBottomRad))))
+    worldMapRadius = mapWidth / mapLngDelta * 360/(2 * pi);    
+    mapOffsetY = (worldMapRadius / 2 * log( (1 + sin(mapLatBottomRad) ) / (1 - sin(mapLatBottomRad))))
     equatorY = mapHeight + mapOffsetY 
     a = (equatorY-y)/worldMapRadius
 
-    lat = 180/math.pi * (2 * math.atan(math.exp(a)) - math.pi/2)
+    lat = 180/pi * (2 * atan(exp(a)) - pi/2)
     long = mapLngLeft+x/mapWidth*mapLngDelta
 
     return lat, long
@@ -301,30 +317,16 @@ def removeIcon(iconPath, findx, nameOfAttribute, value, driver):
     driver.execute_script("arguments[0].setAttribute(arguments[1], arguments[2])", element, nameOfAttribute, value)
 
 
-def setUpDriver():
-    """Sets up chromedriver that will manage all of the mapping with google"""
-
-    s=Service(ChromeDriverManager().install())
-    chrome_options = Options()
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])     # Gets rid of google's automated software button
-    driver = webdriver.Chrome(service=s, options=chrome_options)
-    return driver
-
-
-
-driver = setUpDriver()
-
+# driver = setUpDriver()
 # Sample calls
-map(["859 Barron Ave, Palo Alto", "1095 McGregor Way, Palo Alto", "980 Matadero Ave, Palo Alto", "4029 Arbol Dr, Palo Alto"], "4_places_test.png", (197, 121, 224, 255), driver)
+# map(["859 Barron Ave, Palo Alto", "1095 McGregor Way, Palo Alto", "980 Matadero Ave, Palo Alto", "4029 Arbol Dr, Palo Alto"], "4_places_test.png", driver)
 
-map(["859 Barron Ave, Palo Alto"], "1_place_test.png", (197, 121, 224, 255), driver)
+# map(["859 Barron Ave, Palo Alto"], "1_place_test.png", driver)
 
-map(["64 Action St, Daly City", "58 Action St, Daly City"], "2_really_close_test.png", (197, 121, 224, 255), driver)
+# map(["64 Action St, Daly City", "58 Action St, Daly City"], "2_really_close_test.png", driver)
 
-map(["64 Action St, Daly City", "58 Action St, Daly City", "6063 Mission St, Daly City"], "place_covered_by_text_test.png", (197, 121, 224, 255), driver)
+# map(["64 Action St, Daly City", "58 Action St, Daly City", "6063 Mission St, Daly City"], "place_covered_by_text_test.png", driver)
 
 # ALWAYS QUIT DRIVER AT THE END TO CLOSE IT
-driver.quit()
+# driver.quit()
 
-# For next time... figure out starting pixel color by giving it a starting address (home) and getting the color of that pixel at that place
-# Implement a search algorithm that looks for the closest pixel of that color to start the coloring in process

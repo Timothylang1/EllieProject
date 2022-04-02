@@ -1,10 +1,13 @@
 import tkinter as tk
 import csv
 from functools import partial
-from math import sqrt, ceil
+from math import sqrt
 from tkinter.font import BOLD
-from fpdf import FPDF
-from pyparsing import col
+# Personal files
+
+import loadMap # Creates map given a list of addresses
+import pdfMaker # Creates PDF with any data
+
 
 class Firefly():
 
@@ -41,8 +44,6 @@ class Firefly():
 
         # Close data table
         dataIn.close()
-
-        # Update widgets
 
         # Instruction about column
         self.label1["text"] = "Header to Compare:"
@@ -84,41 +85,68 @@ class Firefly():
         # Button list that keeps track of all the buttons to disable and enable when processing data
         self.buttonList = []
 
-        self.enterButton = tk.Button(self.rootWin, font = "Futura 16", text="Eliminate data that \n doesn't fit the parameters",
+        self.enterButton = tk.Button(self.rootWin, font = "Futura 16", text="CLICK HERE \n to modify data",
                           relief = tk.RAISED, bd = 2, command=self.selectData)
         self.enterButton.grid(row = 2, column = 1, padx = 5, pady = 5)
         self.buttonList.append(self.enterButton)
 
+        self.displayTypes = tk.Label(self.rootWin, text = "Display Data Types \n Listed Below:",
+                          font = "Futura 16 bold", relief = tk.RAISED,
+                          bd = 2)
+        self.displayTypes.grid(row = 3, column = 0, padx = 5, pady = 5)
+
+        # Each button below creates a toplevel widget and disable all other buttons in other toplevels + main
+        # Each toplevel acts the same, the only thing that changes is how the data is displayed
+        # So for each, the method of displaying the data is based on the input lambda expression
+        # self.displayData(instructions, title of widget, lambda which contains which method to use and the inputs)
+
         self.printButton = tk.Button(self.rootWin, font = "Futura 16", text="Print current data",
-                          relief = tk.RAISED, bd = 2, command=self.printData)
-        self.printButton.grid(row = 2, column = 0, padx = 5, pady = 5)
+                        relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
+                        """1. Click headers above in the order you want the columns \n
+                        2. Enter PDF file name (or pathway) you want below on the left \n 
+                        3. Enter number of entries per pdf on the right (default is size of data set) \n
+                        4. Then CLICK HERE to create""",
+                        "Print Format",
+                        lambda A, B, C, D, E, F: createPDF(A, B, C, D, E, F))) # Here is where it distinguishes between which method is used to display data
+        self.printButton.grid(row = 4, column = 0, padx = 5, pady = 5)
         self.buttonList.append(self.printButton)
 
-        toplevel = tk.Toplevel()
-        toplevel.title("Select Header")
-        toplevel.protocol("WM_DELETE_WINDOW", self.nothing)
-        tracker = 0
-        squareShape = round(sqrt(float(len(self.fieldnames))))
-        for field in self.fieldnames:
-            button = tk.Button(toplevel, font = "Futura 10", text=field,
-                          relief = tk.RAISED, bd = 2, command=partial(self.updateColumnLabel, field))
-            button.grid(row = tracker // squareShape, column = (tracker + squareShape) % squareShape, padx = 5, pady = 5)
-            self.buttonList.append(button)
-            tracker += 1
+        self.mapButton = tk.Button(self.rootWin, font = "Futura 16", text="Map current data",
+                        relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
+                        """1. Click headers above in the order of creating address \n
+                        (i.e. column with addresses followed by column with city names) \n
+                        2. Enter map file name (or pathway) you want below on the left \n 
+                        3. Enter number of entries per map on the right (default is size of data set) \n
+                        4. Then CLICK HERE to create \n
+                        5. Move mouse to BOTTON RIGHT corner (so it's not in the screenshot) \n""",
+                        "Print Format",
+                        lambda A, B, C, D, E, F: createMap(A, B, C, D, E, F)))
+        self.mapButton.grid(row = 5, column = 0, padx = 5, pady = 5)
+        self.buttonList.append(self.mapButton)
+
+
+        # Creates topLevel where each button is a header of the file
+        toplevel, buttonlist, squareShape = self.createTopLevel( "Select header", lambda T: self.updateColumnLabel(T))
+        self.buttonList.extend(buttonlist) # Adds all the buttons to the main buttons list so that they can be disabled when nessecary
+
 
         # History toplevel that saves the last 10 changes to the file you made (starts empty)
-        self.history = tk.Toplevel(width=300, height=500)
-        self.history.title("History")
+        self.history = tk.Toplevel()
+        self.history.title("Last 10 Operations")
         self.history.protocol("WM_DELETE_WINDOW", self.nothing)
         self.historyButtonList = [] # Tracker for all buttons added to history widget
-        self.historyButtonMax = 5 # Limits the total number of history buttons
+        self.historyButtonMax = 10 # Limits the total number of history buttons
+        self.historyInstructions = tk.Label(self.history, text = "Click on any button below \n to add data back in", # Label with instructions
+                          font = "Futura 16", relief = tk.RAISED,
+                          bd = 2, bg="white")
+        self.historyInstructions.grid(row = 0, padx = 5, pady = 5)
 
     def nothing(self):
         # Used for cancelling closing the toplevels because if the toplevels close, then the whole application fails
         pass
 
-    def updateColumnLabel(self, field):
-        self.column["text"] = field
+    def updateColumnLabel(self, button):
+        self.column["text"] = button["text"] # Updates the column label to whatever data the button clicked held
         
     def selectData(self):
         self.disableButtons()
@@ -127,51 +155,31 @@ class Firefly():
         toCompare = self.entry3.get()
         typeOfComparison = self.entry2.get()
         if typeOfComparison == "=":
-            toCompare = toCompare.split(",")
-            self.removeTrailingSpaces(toCompare)          
-            removed = self.equalTo(column, toCompare)
-            text = str(len(removed)) + " elements \n not equal to " + str(toCompare)
-            self.successLabel["text"] = "Removed " + text
-            self.addHistoryButton(removed, text)
+            toCompare = self.stringToList(toCompare)
+            self.manipulateData(lambda x, y: True if x not in y else False, column, toCompare, "is not equal to")
 
         elif typeOfComparison == "!=":
-            toCompare = toCompare.split(",")
-            self.removeTrailingSpaces(toCompare)          
-            removed = self.notEqualTo(column, toCompare)
-            text = str(len(removed)) + " elements \n equal to " + str(toCompare)
-            self.successLabel["text"] = "Removed " + text
-            self.addHistoryButton(removed, text)
+            toCompare = self.stringToList(toCompare)        
+            self.manipulateData(lambda x, y: True if x in y else False, column, toCompare, "is equal to")        
 
         else:
             try:
                 # Test case first
                 float(self.data[0][column])
-                limit = float(toCompare)
+                toCompareFloat = float(toCompare)
 
                 # Then actual
                 if typeOfComparison == ">":
-                    removed = self.greaterThan(column, toCompare)
-                    text = str(len(removed)) + " elements \n less than or equal to " + toCompare
-                    self.successLabel["text"] = "Removed " + text
-                    self.addHistoryButton(removed, text)
+                    self.manipulateData(lambda x, y: True if float(x) <= y else False, column, toCompareFloat, "is less than or equal to")        
 
                 elif typeOfComparison == "<":
-                    removed = self.lessThan(column, toCompare)
-                    text = str(len(removed)) + " elements \n greater than or equal to " + toCompare
-                    self.successLabel["text"] = "Removed " + text
-                    self.addHistoryButton(removed, text)
+                    self.manipulateData(lambda x, y: True if float(x) >= y else False, column, toCompareFloat, "is greater than or equal to")        
 
                 elif typeOfComparison == ">=":
-                    removed = self.greaterThanOrEqualTo(column, toCompare)
-                    text = str(len(removed)) + " elements \n less than " + toCompare
-                    self.successLabel["text"] = "Removed " + text                    
-                    self.addHistoryButton(removed, text)
+                    self.manipulateData(lambda x, y: True if float(x) < y else False, column, toCompareFloat, "is less than")        
 
                 elif typeOfComparison == "<=":
-                    removed = self.lessThanOrEqualTo(column, toCompare)
-                    text = str(len(removed)) + " elements \n greater than " + toCompare
-                    self.successLabel["text"] = "Removed " + text
-                    self.addHistoryButton(removed, text)
+                    self.manipulateData(lambda x, y: True if float(x) > y else False, column, toCompareFloat, "is greater than")        
 
                 else:
                     self.successLabel["text"] = "Operation not included in program"
@@ -184,75 +192,29 @@ class Firefly():
             
         self.enableButtons()
 
-    def removeTrailingSpaces(self, list1):
+    def stringToList(self, string1):
+        """Takes in a string (the users input) and turns it into a list"""
+        list1 = string1.split(",")
         for i in range(len(list1)):
             list1[i] = list1[i].strip()
+        return list1
 
-    def equalTo(self, column, toCompare):
+
+    def manipulateData(self, expression, column, toCompare, resultsString):
+        """Given a lambda expression, uses it to sort and remove data with the column and the data to compareTo. It then updates the results
+        label and adds a history button with the data that has been removed"""
         remove = []
         tracker = 0
         while tracker < len(self.data):
-            if self.data[tracker][column] not in toCompare:
+            if expression(self.data[tracker][column], toCompare):
                 remove.append(self.data[tracker])
                 self.data.pop(tracker)
                 tracker -= 1
-            tracker += 1
-        return remove
+            tracker += 1      
+        text = str(len(remove)) + " items whose " + column + "\n " + resultsString + " " + str(toCompare)
+        self.successLabel["text"] = "Removed " + text
+        self.addHistoryButton(remove, text)
 
-    def notEqualTo(self, column, toCompare):
-        remove = []
-        tracker = 0
-        while tracker < len(self.data):
-            if self.data[tracker][column] in toCompare:
-                remove.append(self.data[tracker])
-                self.data.pop(tracker)
-                tracker -= 1
-            tracker += 1
-        return remove
-
-    def greaterThan(self, column, toCompare):
-        remove = []
-        tracker = 0
-        while tracker < len(self.data):
-            if float(self.data[tracker][column]) <= toCompare:
-                remove.append(self.data[tracker])
-                self.data.pop(tracker)
-                tracker -= 1
-            tracker += 1
-        remove = []
-
-    def lessThan(self, column, toCompare):
-        remove = []
-        tracker = 0
-        while tracker < len(self.data):
-            if float(self.data[tracker][column]) >= toCompare:
-                remove.append(self.data[tracker])
-                self.data.pop(tracker)
-                tracker -= 1
-            tracker += 1
-        remove = []
-
-    def lessThanOrEqualTo(self, column, toCompare):
-        remove = []
-        tracker = 0
-        while tracker < len(self.data):
-            if float(self.data[tracker][column]) > toCompare:
-                remove.append(self.data[tracker])
-                self.data.pop(tracker)
-                tracker -= 1
-            tracker += 1
-        remove = []
-
-    def greaterThanOrEqualTo(self, column, toCompare):
-        remove = []
-        tracker = 0
-        while tracker < len(self.data):
-            if float(self.data[tracker][column]) < toCompare:
-                remove.append(self.data[tracker])
-                self.data.pop(tracker)
-                tracker -= 1
-            tracker += 1
-        remove = []
 
     def addHistoryButton(self, data, text):
         """Adds button to history that when clicked, restores all the data that was removed during a particular operation back to the main list.
@@ -261,9 +223,9 @@ class Firefly():
             self.removeButtonFromHistory(self.historyButtonList[0])
 
         button = tk.Button(self.history, font = "Futura 10", text="Add " + text,
-                          relief = tk.RAISED, bd = 2)
+                          relief = tk.RAISED, bd = 2, width=30)
         button["command"] = partial(self.addData, data, button)
-        button.grid(row = self.historyButtonMax - 1 - len(self.historyButtonList), padx = 5, pady = 5)
+        button.grid(row = self.historyButtonMax - len(self.historyButtonList), padx = 5, pady = 5)
         self.buttonList.append(button)
         self.historyButtonList.append(button)
 
@@ -278,166 +240,190 @@ class Firefly():
 
     def removeButtonFromHistory(self, button):
         """Removes button from history as well as regridding any buttons below it to retain the order"""
+        self.disableButtons()
         self.buttonList.remove(button)
 
         # Removes button, then regrids previous buttons
-        placement = self.historyButtonList.index(button)
         self.historyButtonList.remove(button)
+        for i in range(0, len(self.historyButtonList)):
+            self.historyButtonList[i].grid(row = self.historyButtonMax - i, padx = 5, pady = 5)
+        
+        self.successLabel["text"] = button["text"]
         button.destroy()
-        for i in range(0, placement):
-            self.historyButtonList[i].grid(row = self.historyButtonMax - 1 - len(self.historyButtonList) + i, padx = 5, pady = 5)
+        self.enableButtons()
 
 
-    def printData(self):
+    def displayData(self, instructions, title, expression):
+        """Takes in instructions (String), name of the top level (String) and a lambda expression that will determine how to display 
+        the data (essentially, which method to use)."""
+        # First disables all buttons, then creates toplevel
         self.disableButtons()
-        toplevel = tk.Toplevel()
-        toplevel.title("Print Format")
-        toplevel.protocol("WM_DELETE_WINDOW", self.nothing)
-        tracker = 0
-        squareShape = round(sqrt(float(len(self.fieldnames))))
-        self.printDataButtons = []
-        for field in self.fieldnames:
-            button = tk.Button(toplevel, font = "Futura 10", text=field,
-                          relief = tk.RAISED, bd = 2, command=partial(self.order, tracker))
-            button.grid(row = tracker // squareShape, column = (tracker + squareShape) % squareShape, padx = 5, pady = 5)
-            self.printDataButtons.append(button)
-            tracker += 1
 
-        instructions = tk.Label(toplevel, font = "Futura 10", text="Click in the order \n you want the columns",
-                          relief = tk.RAISED, bd = 2)
-        instructions.grid(row = 0, column = squareShape + 1, padx = 5, pady = 5)
+        toplevel, buttonlist, squareShape = self.createTopLevel(title, lambda T: self.order(T))
 
-        ok = tk.Button(toplevel, font = "Futura 12 bold", text="Enter PDF name below \n then click here to create",
-                          relief = tk.RAISED, bd = 2, command=partial(self.finish, toplevel))
-        ok.grid(row = 1, column = squareShape + 1, padx = 5, pady = 5)
+        self.ok = tk.Button(toplevel, font = "Futura 12 bold", text=instructions,
+                        relief = tk.RAISED, bd = 2, command=partial(self.createDisplay, toplevel, expression))
+        self.ok.grid(row = squareShape + 1, column = 0, columnspan = squareShape, padx = 5, pady = 5)
 
         self.nameEntry = tk.Entry(toplevel, font = "Futura 12",
                           relief = tk.RAISED, bd = 2, width = 14, justify="center")
-        self.nameEntry.grid(row = 2, column = squareShape + 1, padx = 5, pady = 5)
+        self.nameEntry.insert(0, "filename")
+        self.nameEntry.grid(row = squareShape + 2, column=0, padx = 5, pady = 5)
 
-        exit = tk.Button(toplevel, font = "Futura 12 bold", text="Exit",
+        self.entriesPerSet = tk.Entry(toplevel, font = "Futura 12",
+                          relief = tk.RAISED, bd = 2, width = 14, justify="center")
+        self.entriesPerSet.insert(0, str(len(self.data)))
+        self.entriesPerSet.grid(row = squareShape + 2, column=max(squareShape - 1, 1), padx = 5, pady = 5) # The max is to ensure that the entries don't end up collapsing on each other in case there aren't that many headers
+
+        exit = tk.Button(toplevel, font = "Futura 12 bold", text="Exit back to main menu",
                           relief = tk.RAISED, bd = 2, command=partial(self.destroy, toplevel))
-        exit.grid(row = 3, column = squareShape + 1, padx = 5, pady = 5)
+        exit.grid(row = 0, column = squareShape + 1, padx = 5, pady = 5)
 
         self.orderedData = []
-        self.orderedTracker = 0
-
 
     def destroy(self, toplevel):
         toplevel.destroy()
         self.enableButtons()
 
-    def finish(self, toplevel):
-        pdf = FPDF('L')
-        pdf.add_page()
 
-        pdf.set_font("Times", "B", size=10)
-        line_height = pdf.font_size * 1.5
+    def createDisplay(self, toplevel, expression):
+        """Takes in a topLevel widget and a lambda expression which method to use for displaying the data. Before displaying,
+        checks to ensure that inputs are all correct"""
+        # Checks that user has inputted data correctly
+        if len(self.orderedData) == 0:
+            self.ok["text"] = "Click header buttons above in the order you want"
+            return
 
-        # The sole purpose of testerPDF is to find the height of multicell blocks based on the text input. This is to determine the height of the text blocks for a more cleaner look
-        testerPDF = FPDF()
-        testerPDF.add_page()
-        testerPDF.set_font("Times", size=10)
+        # Gets data from toplevel first
+        filename = self.nameEntry.get()
+        if len(filename) == 0:
+            self.ok["text"] = "Make sure that you have entered a filename \n in the bottom right box"
+            return
 
-        # Calculate nessecary cell width
-        # Setup
-        widthTracker = [0] * len(self.orderedData)
-
-        # Processing all data
-        for row in self.data:
-            column = 0
-            for datum in self.orderedData:
-                widthTracker[column] = len(row[datum])
-                column += 1
+        try:
+            # Gets data from entries
+            entriesPerDisplay = int(self.entriesPerSet.get())
+            if entriesPerDisplay > len(self.data):
+                self.ok["text"] = "Please enter in number less than \n or equal to the total data set \n Total data set length: " + str(len(self.data))
+                return
+        except:
+            self.ok["text"] = "Please enter valid number in bottom right box"
+            return
         
-        # Averaging and calculating values
-        tol_width = pdf.w - 22
-        total = sum(widthTracker)
-        for column in range(len(widthTracker)):
-            widthTracker[column] = widthTracker[column] * tol_width / total
+        # Then destroys topLevel widget, then updates text 
+        toplevel.destroy()
 
-        # Set up of initial headers:
-        pdf.set_font("Times", size=12, style="B")
-        column = 0
-        for header in self.orderedData:
-            pdf.cell(widthTracker[column], line_height, header, 1, 0, 'C')
-            column += 1
+        # The last diaplay might not have exactly the number of entries, so we have to ensure that the last display is taken care of
+        finalEntryLength = len(self.data) % entriesPerDisplay
+
+        # Total number of displayed data to create NOT INCLUDING THE LAST ONE
+        totalNumOfDisplays = (len(self.data) - finalEntryLength) // entriesPerDisplay
+
+        self.successLabel["text"] = "Processing... "
+
+        # Based on expression will determine which method is used to display the data (see final methods at the bottom for example) 
+        expression(self.data, filename, self.orderedData, totalNumOfDisplays, finalEntryLength, entriesPerDisplay)
+
+        # After finishing process, enables all buttons again
+        self.successLabel["text"] = "Finished!"
+        self.enableButtons()
+
+
+    def createTopLevel(self, header, expression):
+        """Creates standard toplevel with header, and a button for each column in the csv file.
+        Returns: toplevel itself, list of buttons created, and squareShape (i.e. how big of a grid the buttons take)
+        Parameters:
+        header (String): name of topLevel widget
+        expression (lambda): which method to call when one of the column buttons is clicked
+        addToButtonList (boolean): if true, adds to overall button list. The list is used to disable all buttons on the screen
+        """
+        toplevel = tk.Toplevel()
+        toplevel.title(header)
+        toplevel.protocol("WM_DELETE_WINDOW", self.nothing)
+        tracker = 0
+        squareShape = round(sqrt(float(len(self.fieldnames))))
+        buttonList = []
+        for field in self.fieldnames:
+            button = tk.Button(toplevel, font = "Futura 10", text=field,
+                          relief = tk.RAISED, bd = 2)
+            button["command"] = partial(expression, button)
+            button.grid(row = tracker // squareShape, column = (tracker + squareShape) % squareShape, padx = 5, pady = 5)
+            buttonList.append(button)
+            tracker += 1
+        return toplevel, buttonList, squareShape
         
-        # Reset after creating headers for page
-        pdf.set_font("Times", size=10)
-        pdf.ln(line_height)
-
-        # Next is all the data points
-        maxRows = 33
-        rowNumber = 0
-        for row in self.data:
-
-            # Calculate maximum height of cell required
-            maxes = [0] * len(widthTracker)
-            for column in range(len(widthTracker)):
-                tester_y = testerPDF.get_y()
-                testerPDF.multi_cell(widthTracker[column], line_height, row[self.orderedData[column]], 1, 0, 'C')
-                maxes[column] = round((testerPDF.get_y() - tester_y) / line_height)
-
-                # Reset so we don't get weird results
-                testerPDF.set_y(tester_y)
-
-            maxi = max(maxes)
-
-            # Check that we're not starting a new page because of cell size
-            rowNumber += maxi
-            if rowNumber > maxRows:
-                pdf.ln(line_height * (maxRows - (rowNumber - maxi) + 1)) # how many lines we need to create before teleporting to beginning of second page
-                column = 0
-                for header in self.orderedData:
-                    pdf.set_font("Times", size=12, style="B")
-                    pdf.cell(widthTracker[column], line_height, header, 1, 0, 'C')
-                    column += 1
-
-                # Reset after creating title for page
-                pdf.set_font("Times", size=10)
-                pdf.ln(line_height)
-                rowNumber = maxi # Where we want rowNumber to start on for the next page depends on how big the overlap cells are between the pages
-            
-            # Adjust all cells for cleaner look based on max height
-            y = pdf.get_y()
-            total = 0
-            for column in range(len(widthTracker)):
-                pdf.multi_cell(w=widthTracker[column], h = line_height * maxi / maxes[column], txt=row[self.orderedData[column]], border=1, align='C')
-                total += widthTracker[column]
-                pdf.set_xy(pdf.l_margin + total, y)
-            pdf.set_xy(pdf.l_margin, y + line_height * maxi)
-
-        pdf.output(self.nameEntry.get() + ".pdf")
-
-        self.destroy(toplevel)
-
-        
-    def order(self, buttonNum):
-        button = self.printDataButtons[buttonNum]
+    def order(self, button):
         self.orderedData.append(button["text"])
         button["bg"] = "red"
-        button["text"] = str(self.orderedTracker + 1) + " " + button["text"]
+        button["text"] = str(len(self.orderedData)) + " " + button["text"]
         button["font"] = "Futura 10 bold"
         button["state"] = "disabled"
-        self.orderedTracker += 1
+
 
     def disableButtons(self):
         for button in self.buttonList:
             button["state"] = "disabled"
     
+
     def enableButtons(self):
         for entry in self.entryList:
-            entry.delete(0, 'end')
+            entry.delete(0, 'end') # Clears all entries in main window
 
         self.column["text"] = ""
 
         for button in self.buttonList:
             button["state"] = "normal"
+
+
+
+# Methods that display data (used in the lambda expressions)
+# ALL METHODS have to take in three parameters: the data (list), the filename (string), and the headers that the user wants to use (list), totalNumber of complete displayed data, length of final entry, entries
+# The reason for the setup is that we can setup other applications before doing the whole process instead of each times setting up
+# a new application (for example: for createMaps, we don't need to create a new driver every time we want to move onto the next map)
+def createPDF(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
+    for i in range(totalNumOfFullEntries):
+        pdfMaker.makePDF(data[i * entriesPerDisplay : (i + 1) * entriesPerDisplay], filename + str(i), orderedColumnNames)
+            
+    if finalEntryLength != 0: # Creation of the last pdf if nessecary
+        pdfMaker.makePDF(data[len(data) - finalEntryLength : len(data)], filename + str(totalNumOfFullEntries), orderedColumnNames)
+
+
+def createMap(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
+    driver = loadMap.setUpDriver() # Sets up driver
+
+    for i in range(totalNumOfFullEntries):
+        makeMap(data[i * entriesPerDisplay : (i + 1) * entriesPerDisplay], filename + str(i), orderedColumnNames, driver)
+            
+    if finalEntryLength != 0: # Creation of the last map if nessecary
+        makeMap(data[len(data) - finalEntryLength : len(data)], filename + str(totalNumOfFullEntries), orderedColumnNames, driver)
+
+    driver.quit() # Closes driver after finishing
+
+# Helper for createMaps
+def makeMap(subsetOfdata, filename, orderedColumnNames, driver):
+    listOfAddresses = []
+    # Setup for list of addresses
+    for row in subsetOfdata:
+        toAdd = ""
+        for column in orderedColumnNames:
+            toAdd += row[column] + " "
+        toAdd = toAdd.rstrip() # Removes the last trailing white space
+        listOfAddresses.append(toAdd)
+
+    loadMap.map(listOfAddresses, filename, driver)
         
-    
+
+
+# Start project
 rgb = Firefly()
 rgb.go()
 
 
+# Test file
 # C:\Users\bblah\OneDrive\Desktop\1.csv
+
+# TODO: create function that creates toplevel widget (all going to be relatively the same)
+# Condense some functions together to avoid repetition and to keep code concise
+# implement the loadMap into a toplevel widget
+# include instructions on the opening widget
+# Figure out how to py2app the whole thing
