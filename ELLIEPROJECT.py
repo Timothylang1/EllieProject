@@ -142,7 +142,7 @@ class Firefly():
                         2. Enter map file PATHWAY output you want below on the left \n 
                         3. Enter number of entries per map on the right (default is size of data set) \n
                         4. Then CLICK HERE to create \n
-                        5. Move mouse to BOTTON RIGHT corner (so it's not in the screenshot) \n
+                        5. Move mouse to BOTTOM RIGHT corner (so it's not in the screenshot) \n
                         PLEASE READ: if this is your first time running this application, it will autoinstall chromedriver \n
                         which takes time. After that, the program will run faster. Please be patient with the first run \n
                         WARNING: DO NOT INCLUDE .png IN FILENAME \n""",
@@ -345,14 +345,8 @@ class Firefly():
         # Total number of displayed data to create NOT INCLUDING THE LAST ONE
         totalNumOfDisplays = (len(self.data) - finalEntryLength) // entriesPerDisplay
 
-        self.successLabel["text"] = "Processing... "
-
         # Based on expression will determine which method is used to display the data (see final methods at the bottom for example) 
         expression(self.data, filename, self.orderedData, totalNumOfDisplays, finalEntryLength, entriesPerDisplay)
-
-        # After finishing process, enables all buttons again
-        self.successLabel["text"] = "Finished!"
-        self.enableButtons()
 
 
     def createTopLevel(self, header, expression):
@@ -408,15 +402,19 @@ class Firefly():
 # The reason for the setup is that we can setup other applications before doing the whole process instead of each times setting up
 # a new application (for example: for createMaps, we don't need to create a new driver every time we want to move onto the next map)
 def createPDF(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
+    rgb.successLabel["text"] = "Creating pdfs"
     for i in range(totalNumOfFullEntries):
         pdfMaker.makePDF(data[i * entriesPerDisplay : (i + 1) * entriesPerDisplay], filename + str(i), orderedColumnNames)
             
     if finalEntryLength != 0: # Creation of the last pdf if nessecary
         pdfMaker.makePDF(data[len(data) - finalEntryLength : len(data)], filename + str(totalNumOfFullEntries), orderedColumnNames)
-
+    rgb.enableButtons()
+    rgb.successLabel["text"] = "Success!"
 
 def createMap(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
+    rgb.successLabel["text"] = "Setting up chrome driver"
     driver = loadMap.setUpDriver() # Sets up driver
+    rgb.successLabel["text"] = "Finished with setup, now processing map... \n DO NOT TOUCH SCREEN, MAKE SURE MOUSE IS IN LOWER CORNER"
 
     for i in range(totalNumOfFullEntries):
         makeMap(data[i * entriesPerDisplay : (i + 1) * entriesPerDisplay], filename + str(i), orderedColumnNames, driver)
@@ -425,6 +423,8 @@ def createMap(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEn
         makeMap(data[len(data) - finalEntryLength : len(data)], filename + str(totalNumOfFullEntries), orderedColumnNames, driver)
 
     driver.quit() # Closes driver after finishing
+    rgb.enableButtons() # Enables all buttons back once finished
+    rgb.successLabel["text"] = "Success!"
 
 # Helper for createMaps
 def makeMap(subsetOfdata, filename, orderedColumnNames, driver):
@@ -438,7 +438,6 @@ def makeMap(subsetOfdata, filename, orderedColumnNames, driver):
         listOfAddresses.append(toAdd)
 
     loadMap.map(listOfAddresses, filename, driver)
-        
 
 # Start project
 rgb = Firefly()
