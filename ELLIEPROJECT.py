@@ -143,6 +143,8 @@ class Firefly():
                         3. Enter number of entries per map on the right (default is size of data set) \n
                         4. Then CLICK HERE to create \n
                         5. Move mouse to BOTTON RIGHT corner (so it's not in the screenshot) \n
+                        PLEASE READ: if this is your first time running this application, it will autoinstall chromedriver \n
+                        which takes time. After that, the program will run faster. Please be patient with the first run \n
                         WARNING: DO NOT INCLUDE .png IN FILENAME \n""",
                         "Map Format",
                         lambda A, B, C, D, E, F: createMap(A, B, C, D, E, F)))
