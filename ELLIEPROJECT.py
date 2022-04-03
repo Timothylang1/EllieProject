@@ -126,7 +126,7 @@ class Firefly():
         self.printButton = tk.Button(self.rootWin, font = "Futura 16", text="Print current data",
                         relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
                         """1. Click headers above in the order you want the columns \n
-                        2. Enter PDF file name (or pathway) you want below on the left \n 
+                        2. Enter PDF file PATHWAY output you want below on the left \n 
                         3. Enter number of entries per pdf on the right (default is size of data set) \n
                         4. Then CLICK HERE to create \n
                         WARNING: DO NOT INCLUDE .pdf IN FILENAME \n""",
@@ -139,7 +139,7 @@ class Firefly():
                         relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
                         """1. Click headers above in the order of creating address \n
                         (i.e. column with addresses followed by column with city names) \n
-                        2. Enter map file name (or pathway) you want below on the left \n 
+                        2. Enter map file PATHWAY output you want below on the left \n 
                         3. Enter number of entries per map on the right (default is size of data set) \n
                         4. Then CLICK HERE to create \n
                         5. Move mouse to BOTTON RIGHT corner (so it's not in the screenshot) \n
@@ -293,7 +293,7 @@ class Firefly():
 
         self.nameEntry = tk.Entry(toplevel, font = "Futura 12",
                           relief = tk.RAISED, bd = 2, width = 14, justify="center")
-        self.nameEntry.insert(0, "filename")
+        self.nameEntry.insert(0, "File pathway")
         self.nameEntry.grid(row = squareShape + 2, column=0, padx = 5, pady = 5)
 
         self.entriesPerSet = tk.Entry(toplevel, font = "Futura 12",
