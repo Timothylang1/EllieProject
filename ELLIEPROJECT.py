@@ -171,7 +171,7 @@ class Firefly():
 
         self.csvButton = tk.Button(self.rootWin, font="Futura 16", text="Create csv",
                         relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
-                        """1. Click headers above in the order you want the columns \n
+                        """1. Click whichever columns you want in the headers above for the new csv file \n
                         2. Enter csv file PATHWAY output you want below on the left \n 
                         3. Enter number of entries per csv on the right (default is size of data set) \n
                         4. Then CLICK HERE to create \n
@@ -481,6 +481,14 @@ def makeMap(subsetOfdata, filename, orderedColumnNames, driver):
 def createCSV(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
     rgb.successLabel["text"] = "Creating CSV files"
     rgb.rootWin.update() # Updates the text
+    # Gets rid of all the data that isn't needed so we only have the correct fieldnames
+    data = data.copy()
+    for row in data:
+        for column in row.copy(): # Copies it so that we can safely iterate through it
+            if column not in orderedColumnNames:
+                row.pop(column)
+
+
     for i in range(totalNumOfFullEntries):
         with open(filename + str(i) + ".csv", 'w', newline='') as csvfile: # The newline is to prevent there being a newline inbetween each row of data
             writer = csv.DictWriter(csvfile, fieldnames=orderedColumnNames)
