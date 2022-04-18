@@ -1,4 +1,3 @@
-from numpy import square
 import scrapy
 from scrapy.crawler import CrawlerProcess
 import csv
