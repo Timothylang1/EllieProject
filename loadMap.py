@@ -7,8 +7,6 @@ from selenium.webdriver.chrome.options import Options
 from math import sin, atan, log2, exp, log, pi
 import tkinter
 
-import urllib.request
-
 from io import BytesIO
 from PIL import Image
 
@@ -24,20 +22,22 @@ def setUpDriver():
     return driver
 
 
-def map(addresses, filePathWay, driver):
+def map(latList, longList, filePathWay, driver):
     """Gets a pdf map given a list of address with city
-    addresses: list of addresses
+    latList: list of latitudes
+    longList: list of longitudes
     filePathWay: the pathway for the file to be saved into
     fillInColor: what color it will create the icon or fill in the buildings"""
     # ------------------------------------- CHANGE SO THAT IT DOESN'T CRASH IF NO ADDRESS IS GIVEN
-    addressCoor = getCoordinates(addresses) # Gets dictionary of address (key) to coor [x, y] STORED IN A DICTIONARY
-
-    if len(addressCoor) == 0: # If it couldn't find any addresses or no addresses were given, stops the rest of the program
+    if len(latList) == 0 or len(longList) == 0: # If the lists are empty, then we stop so that the program doesn't crash
         return
+
+    getCoordinates(latList, longList) # Modifies the input lists so that longlist contains all the x coor while latlist contains the y coor
+
 
     # Finds the minX, maxX, minY, maxY for plotting on the map so that the map scales enough to fit all the addresses in the list
     # Initial values are all set on the first entry in the map
-    minX, maxX, minY, maxY = getMinMax(addressCoor)
+    minX, maxX, minY, maxY = getMinMax(longList, latList)
 
     # Gets the computer width and height for comparisons
     computerWidth, computerHeight = getWidthHeight()
@@ -53,6 +53,9 @@ def map(addresses, filePathWay, driver):
     # At z = 19, buildings start to be labeled, so the fill in method doesn't work properly, so the maximum zoom allowed is 18
     if z >= 19:
         z = 18
+    # The maximum z scale is 3 (full zoom out)
+    elif z < 3:
+        z = 3
 
     # Gets center lat and long of pixels
     centerLat, centerLong = getCenterLatLong(minX, maxX, minY, maxY)
@@ -82,14 +85,14 @@ def map(addresses, filePathWay, driver):
 
     # Modifies map by adding in icons at locations on the png
     # Calculating the location
-    for address in addressCoor:
-        x = addressCoor[address][0]
-        y = addressCoor[address][1]
+    for i in range(len(longList)):
+        x = longList[i] # Modified above to now contain the x coordinates
+        y = latList[i] # Modified above to now contain the y coordinates
         pixelX = round((x - offsetX) * ratio)
         pixelY = round((y - offsetY) * ratio)
         if z >= 17: # When z is greater than or equal to 17, we can start to see buildings, so it's safe to use the fillin
             # If drawing the box would be bigger (i.e. change more pixels), then we draw the box instead (16 x 16)
-            if fillIn(pixelX, pixelY, pixelMap, width, height, fillInColor) < 150: # If something stopped fillIn (like name covering up building, or the building is too small), just revert back to the box shape
+            if fillIn(pixelX, pixelY, pixelMap, width, height, fillInColor) < 100: # If something stopped fillIn (like name covering up building, or the building is too small), just revert back to the box shape
                 drawSquare(pixelX, pixelY, pixelMap, width, height, fillInColor)
         else: # In every other case, we just put a 5x5 pixel box of this color where the place is
             drawSquare(pixelX, pixelY, pixelMap, width, height, fillInColor)
@@ -167,23 +170,9 @@ def calculateZ(pixelWidthOfComputer, pixelWidthRequired):
     return (int) (log2(pixelWidthOfComputer/pixelWidthRequired) + 3)
 
 
-def getMinMax(addressCoor):
-    """Returns list in this order: minX, maxX, minY, maxY given the dictionary of addresses and their cartesian coordinates."""
-    # Initial values are all set on the first entry in the map
-    [x, y] = list(addressCoor.items())[0][1]
-    minX = x
-    maxX = x
-    minY = y
-    maxY = y
-    for address in addressCoor:
-        x = addressCoor[address][0]
-        y = addressCoor[address][1]
-        minX = min(minX, x)
-        maxX = max(maxX, x)
-        minY = min(minY, y)
-        maxY = max(maxY, y)
-
-    return minX, maxX, minY, maxY
+def getMinMax(xList, yList):
+    """Returns list in this order: minX, maxX, minY, maxY given the x coor and y coor."""
+    return min(xList), max(xList), min(yList), max(yList)
 
 
 def getRequiredPixelWidthOfMap(minX, maxX, minY, maxY, computerWidth, computerHeight):
@@ -192,30 +181,12 @@ def getRequiredPixelWidthOfMap(minX, maxX, minY, maxY, computerWidth, computerHe
     return max(maxX - minX, (maxY - minY) * computerWidth / computerHeight)
 
 
-def getCoordinates(addresses):
-    """Gets all of the (x, y) given a list of addresses. Also contains a list of addresses that didn't have coordinates"""
-    removedAddress = [] # List of all the addresses that we couldn't locate
-    addressCoor = {} # Dictionary containing address -> [lat, long]
-
-    for address in addresses:
-        address = address.replace(" ", "+") + "/"
-        try:
-            web = urllib.request.urlopen("https://www.google.com/maps/search/" + address)
-            data = str(web.read())
-
-            initialCoor = data.find("center=") + 7
-            middlePlace = data.find("%2C", initialCoor)
-            endPlace = data.find("&amp", middlePlace)
-
-            lat = float(data[initialCoor : middlePlace])
-            long = float(data[middlePlace + 3 : endPlace])
-
-            addressCoor[address] = convertGeoToPixel(lat, long, 2048, 2048 - 6.708898963677029, -180, 180, -85) # Top y coordinate came from determining what height it needs to be for lat +85 to be at y = 0
-            print(address + " found and calculated")
-        except:
-            print(address + " not found")
-            removedAddress.append(address) # Couldn't find address if there were no floating point numbers (that would be where the error occurs)
-    return addressCoor
+def getCoordinates(latList, longList):
+    """Replaces the elements within lat and long lists to their corresponding x, y coordinates."""
+    for i in range(len(latList)):
+        x, y = convertGeoToPixel(latList[i], longList[i], 2048, 2048 - 6.708898963677029, -180, 180, -85) # Top y coordinate came from determining what height it needs to be for lat +85 to be at y = 0
+        longList[i] = x
+        latList[i] = y
 
 
 def getCenterLatLong(pixelminX, pixelmaxX, pixelminY, pixelmaxY):
@@ -240,7 +211,7 @@ def convertGeoToPixel(latitude, longitude,
     x = (longitude - mapLngLeft) * (mapWidth / mapLngDelta)
     y = mapHeight - ((worldMapWidth / 2 * log((1 + sin(latitudeRad)) / (1 - sin(latitudeRad)))) - mapOffsetY)
 
-    return [x, y]
+    return x, y
 
 def convertPixelToGeo(x, y, mapWidth, mapHeight, mapLngLeft, mapLngRight, mapLatBottom):
     mapLatBottomRad = mapLatBottom * pi / 180
@@ -322,18 +293,3 @@ def removeIcon(iconPath, findx, nameOfAttribute, value, driver):
         except:
             sleep(0.5)
     driver.execute_script("arguments[0].setAttribute(arguments[1], arguments[2])", element, nameOfAttribute, value)
-
-
-# driver = setUpDriver()
-# # Sample calls
-# map(["859 Barron Ave, Palo Alto", "1095 McGregor Way, Palo Alto", "980 Matadero Ave, Palo Alto", "4029 Arbol Dr, Palo Alto"], "4_places_test", driver)
-
-# # map(["859 Barron Ave, Palo Alto"], "1_place_test", driver)
-
-# # map(["64 Action St, Daly City", "58 Action St, Daly City"], "2_really_close_test", driver)
-
-# # map(["64 Action St, Daly City", "58 Action St, Daly City", "6063 Mission St, Daly City"], "place_covered_by_text_test", driver)
-
-# # ALWAYS QUIT DRIVER AT THE END TO CLOSE IT
-# driver.quit()
-

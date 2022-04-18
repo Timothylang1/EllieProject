@@ -7,6 +7,7 @@ from tkinter.font import BOLD
 
 import loadMap # Creates map given a list of addresses
 import pdfMaker # Creates PDF with any data
+import crawler # Used to get lat / long of data for the map
 
 
 class Firefly():
@@ -24,7 +25,7 @@ class Firefly():
         self.entry1 = tk.Entry(self.rootWin, font = "Futura 16",
                           relief = tk.RAISED, bd = 2, width = 14)
         self.entry1.grid(row = 0, column = 1, padx = 5, pady = 5)
-        self.entry1.bind("<Return>", self.updateFile)
+        self.entry1.bind("<Return>", self.checkForLatLong)
 
         # HISTORY BUTTON MAX IS HERE SINCE WE NEED IT FOR THE INSTRUCTIONS TOP LEVEL
         self.historyButtonMax = 10 # Limits the total number of history buttons
@@ -36,7 +37,7 @@ class Firefly():
         1. First, input the pathway to the csv file you want to use. \n
         2. After the application has found your file, it will open to a new window. To modify data, click on one of the header buttons in the window titled 'Select Header'. \n
         You will be modifying data in the csv column with that header. Next, choose which operation to use (i.e. equal to, greater than). \n
-        Lastly, type in what you want to compare. If the comparison is != or =, you can input multiple items with a comma inbetween \n
+        Lastly, type in what you want to compare. If the comparison is != or =, you can input multiple items with a COMMA inbetween \n
         \t(ex. State = California, Minnesota will eliminate all rows of data whose state isn't California OR Minnesota). \n
         3. After you have data in all three fields (column, type of comparison, what to compare), click the button in the center. \n
         IMPORTANT: ANY DATA THAT DOESN'T FIT THE GIVEN PARAMETERS WILL BE ELIMINTATED. So, if you want to get rid of all states NOT EQUAL to California \n
@@ -46,13 +47,16 @@ class Firefly():
         the data that was removed from that operation back into the main window. \n
         6. If you have any questions, suggestions, comments, problems, ideas for additional displayed data, or just want to talk about python and how this application was \n
         built from scratch, feel free to text or call me at 650-447-4476.""",
-        font="Futura 12", relief = tk.RAISED, bd=2, )
+        font="Futura 12", relief = tk.RAISED, bd=2)
         instructions.grid(row=0, column=0, padx = 5, pady = 5)
 
     def go(self):
         self.rootWin.mainloop()
 
-    def updateFile(self, event):
+    
+    def checkForLatLong(self, event):
+        """Checks if the input csv file contains the LAT LONG header needed for mapping. If not, it offers to override input csv file
+        to include the two new columns. The user can still use the input csv file while it's calculating lat/long in the background."""
         # First, read file and copy it to help manipulate
         text = self.entry1.get()
         dataIn = open(text, 'r')
@@ -68,8 +72,23 @@ class Firefly():
         # Close data table
         dataIn.close()
 
+        # Gets rid of all labels and buttons at the start in case we need to add in LAT LONG fields
+        self.entry1.destroy()
+        self.label1.destroy()
+
+        # Then checks if it should add LAT/LONG columns if they don't exist for the map. If it doesn't exist, offer to add it
+        if "LAT" not in self.fieldnames or "LONG" not in self.fieldnames:
+            crawler.setUp(self.data.copy(), self.fieldnames, text, self.rootWin, self) # Takes in the data, the fieldnames, the filepath, the root window, and self to call the self.updateFile() if user has personal LAT LONG columns
+        else:
+            self.updateFile() # Continues program as normal
+
+
+    def updateFile(self):
         # Instruction about column
-        self.label1["text"] = "Header to Compare:"
+        self.label1 = tk.Label(self.rootWin, text = "Header to Compare:",
+                          font = "Futura 16 bold", relief = tk.RAISED,
+                          bd = 2)
+        self.label1.grid(row = 0, column = 0, padx = 5, pady = 5)
 
         self.label2 = tk.Label(self.rootWin, text = "Type of comparison:\n >, =, <, >=, <=, !=",
                           font = "Futura 16 bold", relief = tk.RAISED,
@@ -87,7 +106,6 @@ class Firefly():
         self.successLabel.grid(row = 2, column = 2, padx = 5, pady = 5)
 
         # Replace entry with label
-        self.entry1.destroy()
         self.column = tk.Label(self.rootWin, text = "",
                           font = "Futura 16", relief = tk.RAISED,
                           bd = 2, width=14, bg="white")
@@ -135,10 +153,10 @@ class Firefly():
         self.printButton.grid(row = 4, column = 0, padx = 5, pady = 5)
         self.buttonList.append(self.printButton)
 
+
         self.mapButton = tk.Button(self.rootWin, font = "Futura 16", text="Map current data",
                         relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
-                        """1. Click headers above in the order of creating address \n
-                        (i.e. column with addresses followed by column with city names) \n
+                        """1. Click LAT header first, then LONG \n
                         2. Enter map file PATHWAY output you want below on the left \n 
                         3. Enter number of entries per map on the right (default is size of data set) \n
                         4. Then CLICK HERE to create \n
@@ -150,6 +168,18 @@ class Firefly():
                         lambda A, B, C, D, E, F: createMap(A, B, C, D, E, F)))
         self.mapButton.grid(row = 5, column = 0, padx = 5, pady = 5)
         self.buttonList.append(self.mapButton)
+
+        self.csvButton = tk.Button(self.rootWin, font="Futura 16", text="Create csv",
+                        relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
+                        """1. Click headers above in the order you want the columns \n
+                        2. Enter csv file PATHWAY output you want below on the left \n 
+                        3. Enter number of entries per csv on the right (default is size of data set) \n
+                        4. Then CLICK HERE to create \n
+                        WARNING: DO NOT INCLUDE .csv IN FILENAME \n""",
+                        "CSV Format",
+                        lambda A, B, C, D, E, F: createCSV(A, B, C, D, E, F)))
+        self.csvButton.grid(row = 6, column = 0, padx = 5, pady = 5)
+        self.buttonList.append(self.csvButton)
 
 
         # Creates topLevel where each button is a header of the file
@@ -396,13 +426,16 @@ class Firefly():
             button["state"] = "normal"
 
 
-
 # Methods that display data (used in the lambda expressions)
 # ALL METHODS have to take in three parameters: the data (list), the filename (string), and the headers that the user wants to use (list), totalNumber of complete displayed data, length of final entry, entries
 # The reason for the setup is that we can setup other applications before doing the whole process instead of each times setting up
 # a new application (for example: for createMaps, we don't need to create a new driver every time we want to move onto the next map)
+
+
+# Creating PDF's function
 def createPDF(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
     rgb.successLabel["text"] = "Creating pdfs"
+    rgb.rootWin.update() # Updates the text
     for i in range(totalNumOfFullEntries):
         pdfMaker.makePDF(data[i * entriesPerDisplay : (i + 1) * entriesPerDisplay], filename + str(i), orderedColumnNames)
             
@@ -411,10 +444,15 @@ def createPDF(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEn
     rgb.enableButtons()
     rgb.successLabel["text"] = "Success!"
 
+
+# Creating maps function
 def createMap(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
     rgb.successLabel["text"] = "Setting up chrome driver"
+    rgb.rootWin.update() # Updates the text
+
     driver = loadMap.setUpDriver() # Sets up driver
     rgb.successLabel["text"] = "Finished with setup, now processing map... \n DO NOT TOUCH SCREEN, MAKE SURE MOUSE IS IN LOWER CORNER"
+    rgb.rootWin.update() # Updates the text
 
     for i in range(totalNumOfFullEntries):
         makeMap(data[i * entriesPerDisplay : (i + 1) * entriesPerDisplay], filename + str(i), orderedColumnNames, driver)
@@ -428,16 +466,36 @@ def createMap(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEn
 
 # Helper for createMaps
 def makeMap(subsetOfdata, filename, orderedColumnNames, driver):
-    listOfAddresses = []
+    """OrderedColumnNames should have the LATITUDE first followed by the LONGITUDE"""
+    lat = []
+    long = []
     # Setup for list of addresses
     for row in subsetOfdata:
-        toAdd = ""
-        for column in orderedColumnNames:
-            toAdd += row[column] + " "
-        toAdd = toAdd.rstrip() # Removes the last trailing white space
-        listOfAddresses.append(toAdd)
+        lat.append(float(row[orderedColumnNames[0]]))
+        long.append(float(row[orderedColumnNames[1]]))
 
-    loadMap.map(listOfAddresses, filename, driver)
+    loadMap.map(lat, long, filename, driver)
+
+
+# Creating csv files function
+def createCSV(data, filename, orderedColumnNames, totalNumOfFullEntries, finalEntryLength, entriesPerDisplay):
+    rgb.successLabel["text"] = "Creating CSV files"
+    rgb.rootWin.update() # Updates the text
+    for i in range(totalNumOfFullEntries):
+        with open(filename + str(i) + ".csv", 'w', newline='') as csvfile: # The newline is to prevent there being a newline inbetween each row of data
+            writer = csv.DictWriter(csvfile, fieldnames=orderedColumnNames)
+            writer.writeheader()
+            writer.writerows(data[i * entriesPerDisplay : (i + 1) * entriesPerDisplay])
+            csvfile.close()            
+    if finalEntryLength != 0: # Creation of the last pdf if nessecary
+        with open(filename + str(totalNumOfFullEntries) + ".csv", 'w', newline='') as csvfile: # The newline is to prevent there being a newline inbetween each row of data
+            writer = csv.DictWriter(csvfile, fieldnames=orderedColumnNames)
+            writer.writeheader()
+            writer.writerows(data[len(data) - finalEntryLength : len(data)])
+            csvfile.close()
+
+    rgb.enableButtons() # Enables all buttons back once finished
+    rgb.successLabel["text"] = "Success!"
 
 # Start project
 rgb = Firefly()
