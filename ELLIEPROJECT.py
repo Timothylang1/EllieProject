@@ -3,11 +3,14 @@ import csv
 from functools import partial
 from math import sqrt
 from tkinter.font import BOLD
+import os
+
 # Personal files
 
 import loadMap # Creates map given a list of addresses
 import pdfMaker # Creates PDF with any data
 import crawler # Used to get lat / long of data for the map
+import playSongs # Toplevel used to control songs played # Currently all Glass Animals
 
 
 class Firefly():
@@ -15,6 +18,10 @@ class Firefly():
     def __init__(self):
         self.rootWin = tk.Tk()
         self.rootWin.title("Project Firefly")
+
+        # Creation of song toplevel
+        playSongs.musicMaker(self.rootWin, os.path.join(os.path.dirname(__file__), 'songs'))
+
 
         self.label1 = tk.Label(self.rootWin, text = "File pathway",
                           font = "Futura 16 bold", relief = tk.RAISED,

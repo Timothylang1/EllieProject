@@ -112,19 +112,19 @@ class musicMaker():
 
 
 
-# --- main ---
+# # --- main ---
 
 
-root = tk.Tk()
+# root = tk.Tk()
 
-folder = os.path.join(os.path.dirname(__file__), 'songs')
+# folder = os.path.join(os.path.dirname(__file__), 'songs')
 
-musicMaker(root, folder)
+# musicMaker(root, folder)
 
-root.mainloop()
+# root.mainloop()
 
 
-# time.sleep(300)
-# print("Finished") # DOESN'T WORK
+# # time.sleep(300)
+# # print("Finished") # DOESN'T WORK
 
-# 16
+# # 16
