@@ -94,7 +94,6 @@ class musicMaker():
         pygame.mixer.music.stop()
         pygame.mixer.music.load(os.path.join(self.pathwayToFolder, self.listOfSongs[self.current])) # Reloads the other song as the new one
         pygame.mixer.music.play()
-        self.nextButton["state"] = "normal"
 
 
     def queueSong(self):
@@ -108,6 +107,7 @@ class musicMaker():
         self.updateSongName()
             
         pygame.mixer.music.queue(os.path.join(self.pathwayToFolder, self.listOfSongs[self.current]))
+        self.nextButton["state"] = "normal"
 
 
 

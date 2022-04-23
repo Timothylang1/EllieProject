@@ -124,7 +124,7 @@ class CreateLATLONGCSVFile():
             tracker += 1
             self.allLabels.append(button)
 
-        self.instructions= tk.Button(self.rootWin, text = """
+        self.instructions = tk.Button(self.rootWin, text = """
             WARNING: your CSV file doesn't include latitude or longitude coordinates. \n
             If you WANT to use the map function, please follow the instructions below. If not, click exit to return to mainWindow OR... \n
             If you have custom personal LAT LONG columns in csv file, then click exit to return to mainWindow. \n
@@ -191,18 +191,6 @@ class CreateLATLONGCSVFile():
         button["state"] = "disabled"
 
 
-    def go(self):
-        self.rootWin.mainloop()
-
-
 def setUp(data, fieldnames, filepath, rootWin, mainClass):
     """Modifies rootWin window that shows current progress towards getting all the LAT / LONG of the data"""
     CreateLATLONGCSVFile(data, fieldnames, filepath, rootWin, mainClass)
-
-# TODO: 
-"""1. Fix the update display
-2. Figure out how to close the rootWindow seperately between this program and the main program
-3. Try to reduce complexity in passing in variables
-4. Figure out how to incorporate songs while loading
-5. Update time remaining
-6. Add new createCSV file button in main window"""

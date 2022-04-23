@@ -4,6 +4,8 @@ from functools import partial
 from math import sqrt
 from tkinter.font import BOLD
 import os
+from tkinter.filedialog import asksaveasfilename, askopenfilename # Used to save files and open them
+
 
 # Personal files
 
@@ -11,6 +13,7 @@ import loadMap # Creates map given a list of addresses
 import pdfMaker # Creates PDF with any data
 import crawler # Used to get lat / long of data for the map
 import playSongs # Toplevel used to control songs played # Currently all Glass Animals
+import excelMaker # Used to create excel spreadsheets, or add new sheets to existing excel sheets
 
 
 class Firefly():
@@ -23,16 +26,10 @@ class Firefly():
         playSongs.musicMaker(self.rootWin, os.path.join(os.path.dirname(__file__), 'songs'))
 
 
-        self.label1 = tk.Label(self.rootWin, text = "File pathway",
+        self.label1 = tk.Label(self.rootWin, text = "Welcome to Project Firefly! Please select a csv file to continue...",
                           font = "Futura 16 bold", relief = tk.RAISED,
                           bd = 2)
         self.label1.grid(row = 0, column = 0, padx = 5, pady = 5)
-
-
-        self.entry1 = tk.Entry(self.rootWin, font = "Futura 16",
-                          relief = tk.RAISED, bd = 2, width = 14)
-        self.entry1.grid(row = 0, column = 1, padx = 5, pady = 5)
-        self.entry1.bind("<Return>", self.checkForLatLong)
 
         # HISTORY BUTTON MAX IS HERE SINCE WE NEED IT FOR THE INSTRUCTIONS TOP LEVEL
         self.historyButtonMax = 10 # Limits the total number of history buttons
@@ -41,7 +38,7 @@ class Firefly():
         instructTop.title("Project FireFly Instructions")
         instructions = tk.Label(instructTop, text=
         """Welcome to Project Firefly! My name is Timothy, and I'm here to guide you through how to use this application (feel free to close this window if you've read this) \n 
-        1. First, input the pathway to the csv file you want to use. \n
+        1. First, click the csv file you want to open. \n
         2. After the application has found your file, it will open to a new window. To modify data, click on one of the header buttons in the window titled 'Select Header'. \n
         You will be modifying data in the csv column with that header. Next, choose which operation to use (i.e. equal to, greater than). \n
         Lastly, type in what you want to compare. If the comparison is != or =, you can input multiple items with a COMMA inbetween \n
@@ -57,16 +54,25 @@ class Firefly():
         font="Futura 12", relief = tk.RAISED, bd=2)
         instructions.grid(row=0, column=0, padx = 5, pady = 5)
 
+        self.checkForLatLong(askopenfilename())
+
     def go(self):
         self.rootWin.mainloop()
 
     
-    def checkForLatLong(self, event):
+    def checkForLatLong(self, filepath):
         """Checks if the input csv file contains the LAT LONG header needed for mapping. If not, it offers to override input csv file
         to include the two new columns. The user can still use the input csv file while it's calculating lat/long in the background."""
         # First, read file and copy it to help manipulate
-        text = self.entry1.get()
-        dataIn = open(text, 'r')
+        if len(filepath) == 0: # If no pathway was given, closes application
+            self.label1["text"] = "No file given. You just here for the music?"
+            return
+
+        if filepath[len(filepath) - 4:len(filepath)] != ".csv": # If the file isn't a csv file
+            self.label1["text"] = "Please give a csv file next time. \n Close and reopen application to retry."
+            return
+
+        dataIn = open(filepath, 'r')
         data = csv.DictReader(dataIn)
 
         # Copy of the data in question to manipulate
@@ -79,13 +85,12 @@ class Firefly():
         # Close data table
         dataIn.close()
 
-        # Gets rid of all labels and buttons at the start in case we need to add in LAT LONG fields
-        self.entry1.destroy()
+        # Gets rid of all labels at the start
         self.label1.destroy()
 
         # Then checks if it should add LAT/LONG columns if they don't exist for the map. If it doesn't exist, offer to add it
         if "LAT" not in self.fieldnames or "LONG" not in self.fieldnames:
-            crawler.setUp(self.data.copy(), self.fieldnames, text, self.rootWin, self) # Takes in the data, the fieldnames, the filepath, the root window, and self to call the self.updateFile() if user has personal LAT LONG columns
+            crawler.setUp(self.data.copy(), self.fieldnames, filepath, self.rootWin, self) # Takes in the data, the fieldnames, the filepath, the root window, and self to call the self.updateFile() if user has personal LAT LONG columns
         else:
             self.updateFile() # Continues program as normal
 
@@ -151,10 +156,8 @@ class Firefly():
         self.printButton = tk.Button(self.rootWin, font = "Futura 16", text="Print current data",
                         relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
                         """1. Click headers above in the order you want the columns \n
-                        2. Enter PDF file PATHWAY output you want below on the left \n 
-                        3. Enter number of entries per pdf on the right (default is size of data set) \n
-                        4. Then CLICK HERE to create \n
-                        WARNING: DO NOT INCLUDE .pdf IN FILENAME \n""",
+                        2. Enter number of entries per pdf on the left (default is size of data set) \n
+                        3. Then CLICK HERE to create \n""",
                         "Print Format",
                         lambda A, B, C, D, E, F: createPDF(A, B, C, D, E, F))) # Here is where it distinguishes between which method is used to display data
         self.printButton.grid(row = 4, column = 0, padx = 5, pady = 5)
@@ -164,13 +167,10 @@ class Firefly():
         self.mapButton = tk.Button(self.rootWin, font = "Futura 16", text="Map current data",
                         relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
                         """1. Click LAT header first, then LONG \n
-                        2. Enter map file PATHWAY output you want below on the left \n 
-                        3. Enter number of entries per map on the right (default is size of data set) \n
-                        4. Then CLICK HERE to create \n
-                        5. Move mouse to BOTTOM RIGHT corner (so it's not in the screenshot) \n
+                        2. Enter number of entries per map on the left (default is size of data set) \n
+                        3. Then CLICK HERE to create \n
                         PLEASE READ: if this is your first time running this application, it will autoinstall chromedriver \n
-                        which takes time. After that, the program will run faster. Please be patient with the first run \n
-                        WARNING: DO NOT INCLUDE .png IN FILENAME \n""",
+                        which takes time. After that, the program will run faster. Please be patient with the first run \n""",
                         "Map Format",
                         lambda A, B, C, D, E, F: createMap(A, B, C, D, E, F)))
         self.mapButton.grid(row = 5, column = 0, padx = 5, pady = 5)
@@ -179,14 +179,17 @@ class Firefly():
         self.csvButton = tk.Button(self.rootWin, font="Futura 16", text="Create csv",
                         relief = tk.RAISED, bd = 2, command=partial(self.displayData, 
                         """1. Click whichever columns you want in the headers above for the new csv file \n
-                        2. Enter csv file PATHWAY output you want below on the left \n 
-                        3. Enter number of entries per csv on the right (default is size of data set) \n
-                        4. Then CLICK HERE to create \n
-                        WARNING: DO NOT INCLUDE .csv IN FILENAME \n""",
+                        2. Enter number of entries per csv on the left (default is size of data set) \n
+                        3. Then CLICK HERE to create \n""",
                         "CSV Format",
                         lambda A, B, C, D, E, F: createCSV(A, B, C, D, E, F)))
         self.csvButton.grid(row = 6, column = 0, padx = 5, pady = 5)
         self.buttonList.append(self.csvButton)
+
+        self.ExcelButton = tk.Button(self.rootWin, font="Futura 16", text="Excel Sheet",
+                        relief = tk.RAISED, bd = 2, command=self.createExcel)
+        self.ExcelButton.grid(row = 7, column = 0, padx = 5, pady = 5)
+        self.buttonList.append(self.ExcelButton)
 
 
         # Creates topLevel where each button is a header of the file
@@ -203,6 +206,7 @@ class Firefly():
                           font = "Futura 16", relief = tk.RAISED,
                           bd = 2, bg="white")
         self.historyInstructions.grid(row = 0, padx = 5, pady = 5)
+        
 
     def nothing(self):
         # Used for cancelling closing the toplevels because if the toplevels close, then the whole application fails
@@ -255,6 +259,7 @@ class Firefly():
             
         self.enableButtons()
 
+
     def stringToList(self, string1):
         """Takes in a string (the users input) and turns it into a list"""
         list1 = string1.split(",")
@@ -301,6 +306,7 @@ class Firefly():
         # Removes button, then reGrids other buttons below it so that new history buttons added still maintain order
         self.removeButtonFromHistory(button)
 
+
     def removeButtonFromHistory(self, button):
         """Removes button from history as well as regridding any buttons below it to retain the order"""
         self.disableButtons()
@@ -328,21 +334,19 @@ class Firefly():
                         relief = tk.RAISED, bd = 2, command=partial(self.createDisplay, toplevel, expression))
         self.ok.grid(row = squareShape + 1, column = 0, columnspan = squareShape, padx = 5, pady = 5)
 
-        self.nameEntry = tk.Entry(toplevel, font = "Futura 12",
-                          relief = tk.RAISED, bd = 2, width = 14, justify="center")
-        self.nameEntry.insert(0, "File pathway")
-        self.nameEntry.grid(row = squareShape + 2, column=0, padx = 5, pady = 5)
-
         self.entriesPerSet = tk.Entry(toplevel, font = "Futura 12",
                           relief = tk.RAISED, bd = 2, width = 14, justify="center")
         self.entriesPerSet.insert(0, str(len(self.data)))
-        self.entriesPerSet.grid(row = squareShape + 2, column=max(squareShape - 1, 1), padx = 5, pady = 5) # The max is to ensure that the entries don't end up collapsing on each other in case there aren't that many headers
+        self.entriesPerSet.grid(row = squareShape + 2, column=0, padx = 5, pady = 5)
 
         exit = tk.Button(toplevel, font = "Futura 12 bold", text="Exit back to main menu",
                           relief = tk.RAISED, bd = 2, command=partial(self.destroy, toplevel))
         exit.grid(row = 0, column = squareShape + 1, padx = 5, pady = 5)
 
         self.orderedData = []
+
+        return toplevel, squareShape # Return these two items in case we need to slightly modify it
+
 
     def destroy(self, toplevel):
         toplevel.destroy()
@@ -357,12 +361,6 @@ class Firefly():
             self.ok["text"] = "Click header buttons above in the order you want"
             return
 
-        # Gets data from toplevel first
-        filename = self.nameEntry.get()
-        if len(filename) == 0:
-            self.ok["text"] = "Make sure that you have entered a filename \n in the bottom right box"
-            return
-
         try:
             # Gets data from entries
             entriesPerDisplay = int(self.entriesPerSet.get())
@@ -371,6 +369,11 @@ class Firefly():
                 return
         except:
             self.ok["text"] = "Please enter valid number in bottom right box"
+            return
+
+        # Gets data from toplevel first
+        filename = asksaveasfilename(confirmoverwrite=False)
+        if len(filename) == 0: # If they didn't pick anything...
             return
         
         # Then destroys topLevel widget, then updates text 
@@ -410,6 +413,7 @@ class Firefly():
             tracker += 1
         return toplevel, buttonList, squareShape
         
+
     def order(self, button):
         self.orderedData.append(button["text"])
         button["bg"] = "red"
@@ -431,6 +435,76 @@ class Firefly():
 
         for button in self.buttonList:
             button["state"] = "normal"
+
+
+    # EXCLUSIVE EXCEL SECTION
+    def createExcel(self):
+        """Sets up special toplevel for creating excel spreadsheets."""
+        toplevel, squareShape = self.displayData("""
+                        1. Click headers above in the order you want the columns \n
+                        2. Enter title of sheet on the right \n
+                        3. Then CLICK HERE to create a single excel file or add on a sheet to a preexisting excel spreadsheet \n
+                        Notes: If you click on an existing excel file, the program will add a new sheet to that file. \n
+                        In any other case, it will create a new .xlsx file from scratch and save it at the pathway given. \n
+                        The program will then color in certain entries based on their frequency in previous sheets. The darker the color, the \n
+                        more common a certain entry was in previous sheets in the file. If you would like to disable this option, click \n
+                        the bottom right button to 'Disable Color' scheme. \n
+                        IMPORTANT: DO NOT HAVE FILE OPEN ON ANY APPLICATION WHEN PROGRAM IS RUNNING OR IT WON'T SAVE!
+                        """, "Create Excel", True) # No lambda expression, so put a filler boolean
+        
+        # Slight change of labels and buttons
+        self.entriesPerSet.delete(0, tk.END)
+        self.entriesPerSet.insert(0, "New Sheet Title")
+
+        # New disable color scheme button
+        self.disableColorsButton = tk.Button(toplevel, font = "Futura 12", text="Disable Color",
+                          relief = tk.RAISED, bd = 2, width = 14, justify="center")
+        self.disableColorsButton["command"] = self.swap
+        self.disableColorsButton.grid(row = squareShape + 2, column=max(squareShape - 1, 1), padx = 5, pady = 5) # The max is to ensure that the entries don't end up collapsing on each other in case there aren't that many headers
+
+        # Redirect where the ok button goes
+        self.ok["command"] = partial(self.createExcelSheet, toplevel)
+
+
+    def swap(self):
+        if self.disableColorsButton["text"] == "Disable Color":
+            self.disableColorsButton["text"] = "Enable Color"
+        else:
+            self.disableColorsButton["text"] = "Disable Color"
+
+
+    def createExcelSheet(self, toplevel):
+        """Slightly modified verison from all the other data displays. Same concept, but this time creates excel sheet."""
+
+        if len(self.orderedData) == 0:
+            self.ok["text"] = "Click header buttons above in the order you want"
+            return
+
+        # Gets data from toplevel first
+        sheetName = self.entriesPerSet.get()
+
+        colorScheme = False
+        if self.disableColorsButton["text"] == "Disable Color":
+            colorScheme = True
+
+        # Then asks for file. Automatically adds the ".xlsx" extension since we know we're only creating one xlsx file
+        filename = asksaveasfilename(confirmoverwrite=False, defaultextension=".xlsx")
+        if len(filename) == 0:
+            self.ok["text"] = "Make sure that you have entered a filename \n in the bottom left box"
+            return
+
+        # Then destroys topLevel widget, then updates text 
+        toplevel.destroy()
+
+        self.successLabel["text"] = "Creating excel sheet... Please wait"
+        self.rootWin.update()
+
+        excelMaker.createExcel(filename, sheetName, self.data, self.orderedData, colorScheme)
+
+        self.successLabel["text"] = "Success! Please wait a moment \n before opening excel file"
+        self.enableButtons()
+        self.rootWin.update()
+
 
 
 # Methods that display data (used in the lambda expressions)
