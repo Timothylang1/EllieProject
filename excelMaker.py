@@ -93,7 +93,7 @@ def colorIn(worksheet, matches):
     if max(matches) != 0: # If there were any matches at all...
         rowTracker = 0
         colorDifferenceG = 255 / max(matches)
-        colorDifferenceRB = 100 / max(matches)
+        colorDifferenceRB = 50 / max(matches)
         for row in worksheet.iter_rows(min_row=2):
             # Calculating rgb value as a hexidecimal. The more matches, the darker it becomes. Also formats the g value
             color = "{:02x}".format(255 - round(colorDifferenceRB * matches[rowTracker])) + "{:02x}".format(255 - round(colorDifferenceG * matches[rowTracker])) + "{:02x}".format(255 - round(colorDifferenceRB * matches[rowTracker]))

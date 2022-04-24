@@ -488,7 +488,7 @@ class Firefly():
             colorScheme = True
 
         # Then asks for file. Automatically adds the ".xlsx" extension since we know we're only creating one xlsx file
-        filename = asksaveasfilename(confirmoverwrite=False, defaultextension=".xlsx")
+        filename = asksaveasfilename(defaultextension=".xlsx", confirmoverwrite=True)
         if len(filename) == 0:
             self.ok["text"] = "Make sure that you have entered a filename \n in the bottom left box"
             return
