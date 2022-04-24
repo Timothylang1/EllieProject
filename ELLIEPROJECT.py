@@ -445,6 +445,7 @@ class Firefly():
                         2. Enter title of sheet on the right \n
                         3. Then CLICK HERE to create a single excel file or add on a sheet to a preexisting excel spreadsheet \n
                         Notes: If you click on an existing excel file, the program will add a new sheet to that file. \n
+                        If this is the case, ignore the dialog box that warns about replacing files: your data will not be overwritten. \n
                         In any other case, it will create a new .xlsx file from scratch and save it at the pathway given. \n
                         The program will then color in certain entries based on their frequency in previous sheets. The darker the color, the \n
                         more common a certain entry was in previous sheets in the file. If you would like to disable this option, click \n
@@ -488,7 +489,7 @@ class Firefly():
             colorScheme = True
 
         # Then asks for file. Automatically adds the ".xlsx" extension since we know we're only creating one xlsx file
-        filename = asksaveasfilename(defaultextension=".xlsx", confirmoverwrite=True)
+        filename = asksaveasfilename(defaultextension=".xlsx", confirmoverwrite=False)
         if len(filename) == 0:
             self.ok["text"] = "Make sure that you have entered a filename \n in the bottom left box"
             return
