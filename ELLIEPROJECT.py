@@ -14,6 +14,7 @@ import pdfMaker # Creates PDF with any data
 import crawler # Used to get lat / long of data for the map
 import playSongs # Toplevel used to control songs played # Currently all Glass Animals
 import excelMaker # Used to create excel spreadsheets, or add new sheets to existing excel sheets
+import sendMessage # Text messaging system
 
 
 class Firefly():
@@ -190,6 +191,11 @@ class Firefly():
                         relief = tk.RAISED, bd = 2, command=self.createExcel)
         self.ExcelButton.grid(row = 7, column = 0, padx = 5, pady = 5)
         self.buttonList.append(self.ExcelButton)
+
+        self.textButton = tk.Button(self.rootWin, font="Futura 16", text="Text People",
+                        relief = tk.RAISED, bd = 2, command=self.messageTopLevel)
+        self.textButton.grid(row = 4, column = 1, padx = 5, pady = 5)
+        self.buttonList.append(self.textButton)
 
 
         # Creates topLevel where each button is a header of the file
@@ -507,6 +513,61 @@ class Firefly():
         self.rootWin.update()
 
 
+
+    # EXCLUSIVE PHONE NUMBER SECTION
+    def messageTopLevel(self):
+        """Creates a toplevel to help with setting up the text messages."""
+        """Sets up special toplevel for creating excel spreadsheets."""
+        toplevel, squareShape = self.displayData("""
+                        1. Click header containing phone numbers \n
+                        2. Enter message you want to send in the text field below. \n
+                        3. Then CLICK HERE to message all persons within column of csv file \n
+                        Notes: If you want to personalize text messages, you can also click a second header \n
+                        that contains the names of people. Within the message below, every time you want to \n
+                        insert the person's name, put #####. \n
+                        Ex. Hello #####, how are you doing? -> Hello Timothy, how are you doing?
+                        """, "Texting Application", True) # No lambda expression, so put a filler boolean
+        
+        # Slight change of labels and buttons
+        self.entriesPerSet.destroy() # Replace the entry with text so that we can have multiline text
+        self.entriesPerSet = tk.Text(toplevel, font = "Futura 12",
+                          relief = tk.RAISED, bd = 2, width=100, height=10, wrap=tk.WORD)
+        self.entriesPerSet.grid(row=squareShape + 2, column=0, columnspan=squareShape, padx = 5, pady = 5)
+        self.entriesPerSet.insert("1.0", "Hello #####!")
+
+        # Redirect where the ok button goes
+        self.ok["command"] = partial(self.textPeople, toplevel)
+
+    def textPeople(self, toplevel):
+        """Takes in toplevel, and destroys it after texting people. If user clicked more than 1 headers, the second header will be assumed
+        to contain the name of the column headers containing names. Every time a ##### occurs in the message, it will replace it with the name"""
+        if len(self.orderedData) == 0:
+            self.ok["text"] = "Click header containing numbers, then click header \n containing names if you want personalized text messages \n (second header not required)."
+            return
+
+        # Gets data from toplevel first
+        text = self.entriesPerSet.get("1.0", tk.END).strip("\n") # Starting from row 1, column 0, get all the text until the end. Removes all the newline characters
+
+        # Then destroys topLevel widget, then updates text 
+        toplevel.destroy()
+
+        self.successLabel["text"] = "Texting... please wait"
+        self.rootWin.update()
+
+        # Send unpersonalized text messages
+        if len(self.orderedData) == 1:
+            for row in self.data:
+                sendMessage.text(row[self.orderedData[0]], text)
+        
+        # Modify text messages to substitute name every #####. The column header name is assumed to be the second option pressed
+        else:
+            for row in self.data:
+                sendMessage.text(row[self.orderedData[0]], text.replace("#####", row[self.orderedData[1]]))
+
+
+        self.successLabel["text"] = "Success! All messages sent"
+        self.enableButtons()
+        self.rootWin.update()
 
 # Methods that display data (used in the lambda expressions)
 # ALL METHODS have to take in three parameters: the data (list), the filename (string), and the headers that the user wants to use (list), totalNumber of complete displayed data, length of final entry, entries

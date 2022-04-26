@@ -27,7 +27,7 @@ class musicMaker():
         shuffle(self.listOfSongs) # Randomizes songs order
 
         # Sets up the first two songs
-        pygame.mixer.music.set_volume(0.2) # Sets the volume a bit quieter (really loud otherwise)
+        pygame.mixer.music.set_volume(0.4) # Sets the volume a bit quieter (really loud otherwise)
         pygame.mixer.music.load(os.path.join(self.pathwayToFolder, self.listOfSongs[0]))
         pygame.mixer.music.play()
         pygame.mixer.music.queue(os.path.join(self.pathwayToFolder, self.listOfSongs[1]))

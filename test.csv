@@ -1,5 +1,5 @@
-name,address,city,age,LAT,LONG
-Timothy,1095 McGregor Way,Palo Alto,21,37.4072074,-122.1364822
-Paul,3707 La Calle Ct,Palo Alto,20,37.4116206,-122.136948
-Alice,790 La Para Ave,Palo Alto,1,37.4117756,-122.1332215
-Excel,3953 Laguna Ave,Palo Alto,99,37.4089909,-122.1343084
+name,address,city,age,LAT,LONG,phone
+Timothy,1095 McGregor Way,Palo Alto,21,37.4072074,-122.1364822,6504474476
+Paul,3707 La Calle Ct,Palo Alto,20,37.4116206,-122.136948,6504474476
+Ellie,790 La Para Ave,Palo Alto,1,37.4117756,-122.1332215,6509962835
+Excel,3953 Laguna Ave,Palo Alto,99,37.4089909,-122.1343084,6504474476
